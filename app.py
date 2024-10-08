@@ -537,10 +537,12 @@ if st.button("Match Candidates"):
 
 
 disclaimer_text = """
-**Disclaimer:** Certification validity must be verified manually. These results are AI-generated, and candidates should be thoroughly evaluated through technical interviews based on the information provided in their resumes. Any gaps in the candidate's profile should be addressed and justified.
+<div style="color: grey; margin-top: 90px; font-style: italic;">
+    <strong>*Disclaimer: </strong>The validity of certifications must be verified manually. These results are AI-generated, and candidates should be thoroughly evaluated through technical interviews based on the information provided in their resumes. Any gaps in a candidate's profile should be addressed and justified.
+</div>
 """
 
-st.markdown(disclaimer_text)        
+st.markdown(disclaimer_text, unsafe_allow_html=True)        
         
 footer = """
     <style>
