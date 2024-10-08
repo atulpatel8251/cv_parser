@@ -538,7 +538,7 @@ if st.button("Match Candidates"):
 
 disclaimer_text = """
 <div style="color: grey; margin-top: 90px; font-style: italic;">
-    <strong>*Disclaimer: </strong>The validity of certifications must be verified manually. These results are AI-generated, and candidates should be thoroughly evaluated through technical interviews based on the information provided in their resumes. Any gaps in a candidate's profile should be addressed and justified.
+    <strong>*Disclaimer: </strong>The validity of certifications must be verified manually. These results are AI-generated and this tool is under development, candidates should be thoroughly evaluated through technical interviews based on the information provided in their resumes. Any gaps in a candidate's profile should be addressed and justified.
 </div>
 """
 
