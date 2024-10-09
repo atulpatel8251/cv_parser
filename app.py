@@ -484,7 +484,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # File upload for candidate resumes
-cv_files = st.file_uploader("Upload Candidate Resumes (PDF)", type="pdf", accept_multiple_files=True)
+cv_files = st.file_uploader("", type="pdf", accept_multiple_files=True)
 
 # Ensure criteria_json is initialized in session state
 if 'criteria_json' not in st.session_state:
