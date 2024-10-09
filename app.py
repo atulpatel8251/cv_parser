@@ -95,8 +95,8 @@ add_bg_from_local('assests/OIP.jfif')  # Adjust path to your image file
 st.markdown("""
     <div style="background-color: lightblue; padding: 20px; border-radius: 10px; text-align: center; 
                  max-width: 450px; margin: auto;">
-        <h1 style="color: black;">CV Screening Portal</h1>
-        <h3 style="color: black;">AI based CV screening</h3>
+        <p style="color: black; margin-left: 20px; margin-top: 20px; font-weight: bold;font-size: 40px;">CV Screening Portal</p>
+        <p style="color: black; margin-left: 15px; margin-top: 20px; font-size: 25px;">AI based CV screening</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -470,7 +470,7 @@ def display_candidates_table(candidates):
 st.markdown("""
     <div style="background-color: lightblue; padding: 4px; border-radius: 5px; text-align: left; 
                  max-width: 380px;">
-        <h4 style="color: black; margin-left: 30px;">Upload Job Description (PDF)</h4>
+        <p style="color: black; margin-left: 60px; margin-top: 20px; font-weight: bold;font-size: 20px;">Upload Job Description (PDF)</p>
     </div>
 """, unsafe_allow_html=True)
 
@@ -479,12 +479,13 @@ jd_file = st.file_uploader(" ", type="pdf")  # Note the space in the label to ke
 st.markdown("""
     <div style="background-color: lightblue; padding: 2px; border-radius: 5px; text-align: left; 
                  max-width: 400px;">
-        <h4 style="color: black; margin-left: 15px;">Upload Candidate Resumes (PDF)</h4>
+        <p style="color: black; margin-left: 55px; margin-top: 20px; font-weight: bold;font-size: 20px;">Upload Candidate Resumes (PDF)</p>
     </div>
 """, unsafe_allow_html=True)
 
 # File upload for candidate resumes
 cv_files = st.file_uploader("", type="pdf", accept_multiple_files=True)
+
 
 # Ensure criteria_json is initialized in session state
 if 'criteria_json' not in st.session_state:
