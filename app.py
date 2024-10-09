@@ -96,7 +96,7 @@ st.markdown("""
     <div style="background-color: lightblue; padding: 20px; border-radius: 10px; text-align: center; 
                  max-width: 450px; margin: auto;">
         <h1 style="color: black;">CV Screening Portal</h1>
-        <h3 style="color: black;">AI based CV screening portal.</h3>
+        <h3 style="color: black;">AI based CV screening</h3>
     </div>
 """, unsafe_allow_html=True)
 
@@ -470,7 +470,7 @@ def display_candidates_table(candidates):
 st.markdown("""
     <div style="background-color: lightblue; padding: 4px; border-radius: 5px; text-align: left; 
                  max-width: 380px;">
-        <h4 style="color: black;">Upload Job Description (PDF)</h4>
+        <h4 style="color: black; margin-left: 30px;">Upload Job Description (PDF)</h4>
     </div>
 """, unsafe_allow_html=True)
 
@@ -478,8 +478,8 @@ jd_file = st.file_uploader(" ", type="pdf")  # Note the space in the label to ke
 
 st.markdown("""
     <div style="background-color: lightblue; padding: 2px; border-radius: 5px; text-align: left; 
-                 max-width: 380px;">
-        <h4 style="color: black;">Upload Candidate Resumes (PDF)</h4>
+                 max-width: 400px;">
+        <h4 style="color: black; margin-left: 15px;">Upload Candidate Resumes (PDF)</h4>
     </div>
 """, unsafe_allow_html=True)
 
