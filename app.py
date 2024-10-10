@@ -17,7 +17,7 @@ logging.basicConfig(filename='app.log', level=logging.ERROR)
 st.set_page_config(page_title="Resume Scanner", page_icon=":page_facing_up:",layout="wide")
 
 # Load the logo image
-logo_image = Image.open('assests/th.jfif')
+logo_image = Image.open('assests/HD_Human_Resources_Banner.jpg')
 
 # Optionally, you can resize only if the original size is too large
 # For high-definition display, consider not resizing if the image is already suitable
