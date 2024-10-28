@@ -10,14 +10,9 @@ import streamlit as st
 from PIL import Image
 import base64
 import docx
-import win32com.client
-import os
-from tempfile import NamedTemporaryFile
-import pythoncom
-import logging
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
-import tempfile
+import logging
 from langchain.prompts import PromptTemplate
 logging.basicConfig(filename='app.log', level=logging.ERROR)
 
@@ -89,60 +84,22 @@ with open('style.css') as f:
 # Example: Add your image handling or other logic here
 images = ['6MarkQ']
 
-# Replace with your actual OpenAI API key
 openai.api_key = st.secrets["secret_section"]["OPENAI_API_KEY"]
+#openai.api_key = st.secrets["secret_section"]["OPENAI_API_KEY"]
 
 
 # Function to extract text from PDF uploaded via Streamlit
 
 
-def extract_text_from_doc(file_path):
-    """
-    Extract text from a .doc file using win32com
-    
-    Args:
-        file_path: Path to the .doc file
-    
-    Returns:
-        str: Extracted text from the file
-    """
-    try:
-        # Initialize COM in the current thread
-        pythoncom.CoInitialize()
-        
-        # Create Word Application
-        word = win32com.client.Dispatch("Word.Application")
-        word.Visible = False
-        
-        # Open the document
-        doc = word.Documents.Open(file_path)
-        
-        # Extract text
-        text = doc.Content.Text
-        
-        # Close
-        doc.Close()
-        word.Quit()
-        
-        # Uninitialize COM
-        pythoncom.CoUninitialize()
-        
-        return text.strip()
-    except Exception as e:
-        if 'word' in locals():
-            word.Quit()
-        pythoncom.CoUninitialize()
-        raise e
-
 def extract_text_from_uploaded_pdf(uploaded_file):
     """
-    Extract text from an uploaded PDF, DOCX, or DOC file.
+    Extract text from an uploaded PDF or DOCX file.
 
     Args:
-        uploaded_file: A file-like object containing the document
+        uploaded_file: A file-like object containing the PDF or DOCX.
 
     Returns:
-        str: Extracted text from the file or an empty string if an error occurs
+        str: Extracted text from the file or an empty string if an error occurs.
     """
     try:
         # Determine the file type
@@ -156,28 +113,13 @@ def extract_text_from_uploaded_pdf(uploaded_file):
 
         elif file_type == "docx":
             # Extract text from DOCX
-            doc = docx.Document(io.BytesIO(uploaded_file.read()))
+            doc = docx.Document(uploaded_file)
             text = "\n".join([para.text for para in doc.paragraphs])
             return text.strip()
 
-        elif file_type == "doc":
-            # For .doc files, we need to save it temporarily and use win32com
-            with tempfile.NamedTemporaryFile(delete=False, suffix='.doc') as tmp_file:
-                tmp_file.write(uploaded_file.read())
-                tmp_file_path = tmp_file.name
-
-            try:
-                # Extract text using win32com
-                text = extract_text_from_doc(tmp_file_path)
-                return text
-            finally:
-                # Clean up the temporary file
-                if os.path.exists(tmp_file_path):
-                    os.unlink(tmp_file_path)
-
         else:
             # Show error message for unsupported file types
-            st.error("This file type is not supported. Please upload only PDF, DOCX, or DOC files.", icon="🚫")
+            st.error("This file type is not supported. Please upload only PDF or DOCX files.", icon="🚫")
             return ""
 
     except Exception as e:
@@ -751,7 +693,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # File uploader for Job Description
-jd_file = st.file_uploader(" ", type=["pdf", "docx","doc"])
+jd_file = st.file_uploader(" ", type=["pdf", "docx"])
 
 # Header for Candidate Resumes Upload
 st.markdown("""
@@ -762,7 +704,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # File uploader for Candidate Resumes
-cv_files = st.file_uploader("", type=["pdf", "docx","doc"], accept_multiple_files=True)
+cv_files = st.file_uploader("", type=["pdf", "docx"], accept_multiple_files=True)
 
 # Ensure criteria_json is initialized in session state
 if 'criteria_json' not in st.session_state:
