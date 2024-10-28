@@ -793,8 +793,8 @@ disclaimer_text = """
 <div style="color: grey; margin-top: 50px;">
     <strong>Disclaimer:</strong> Certification validity must be verified manually. 
     These results are AI-generated, and candidates should be thoroughly evaluated 
-    through technical interviews based on the information provided in their resumes. 
-    Any gaps in the candidate's profile should be addressed and justified.
+    through technical interviews For the information provided in their resumes. 
+    
 </div>
 """
 
