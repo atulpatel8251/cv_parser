@@ -777,7 +777,7 @@ if st.button("Extract Criteria and Match Candidates"):
                         
                     # Then display individual matching details
                     for result in candidates_results:
-                        st.markdown(f"### Matching Results for {result['Candidate Name']}:")
+                        st.markdown(f"### Results for {result['Candidate Name']}:")
                         display_pass_fail_verdict(result, cv_text)
                 else:
                     st.error("Please upload at least one CV PDF.")
