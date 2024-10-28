@@ -10,9 +10,12 @@ import streamlit as st
 from PIL import Image
 import base64
 import docx
+import logging
+import os
 from dateutil import parser
 from dateutil.relativedelta import relativedelta
-import logging
+import tempfile
+from spire.doc import Document
 from langchain.prompts import PromptTemplate
 logging.basicConfig(filename='app.log', level=logging.ERROR)
 
@@ -85,21 +88,41 @@ with open('style.css') as f:
 images = ['6MarkQ']
 
 openai.api_key = st.secrets["secret_section"]["OPENAI_API_KEY"]
-#openai.api_key = st.secrets["secret_section"]["OPENAI_API_KEY"]
 
 
 # Function to extract text from PDF uploaded via Streamlit
 
 
+def extract_text_from_doc(file_path):
+    """
+    Extract text from a .doc file using Spire.Doc
+    
+    Args:
+        file_path: Path to the .doc file
+    
+    Returns:
+        str: Extracted text from the file
+    """
+    # Create a Document object
+    document = Document()
+    
+    # Load the Word document
+    document.LoadFromFile(file_path)
+
+    # Extract the text of the document
+    document_text = document.GetText()
+    document.Close()  # Close the document
+    return document_text
+
 def extract_text_from_uploaded_pdf(uploaded_file):
     """
-    Extract text from an uploaded PDF or DOCX file.
+    Extract text from an uploaded PDF, DOCX, or DOC file.
 
     Args:
-        uploaded_file: A file-like object containing the PDF or DOCX.
+        uploaded_file: A file-like object containing the document
 
     Returns:
-        str: Extracted text from the file or an empty string if an error occurs.
+        str: Extracted text from the file or an empty string if an error occurs
     """
     try:
         # Determine the file type
@@ -113,13 +136,28 @@ def extract_text_from_uploaded_pdf(uploaded_file):
 
         elif file_type == "docx":
             # Extract text from DOCX
-            doc = docx.Document(uploaded_file)
+            doc = docx.Document(io.BytesIO(uploaded_file.read()))
             text = "\n".join([para.text for para in doc.paragraphs])
             return text.strip()
 
+        elif file_type == "doc":
+            # For .doc files, we need to save it temporarily and use Spire.Doc
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.doc') as tmp_file:
+                tmp_file.write(uploaded_file.read())
+                tmp_file_path = tmp_file.name
+
+            try:
+                # Extract text using Spire.Doc
+                text = extract_text_from_doc(tmp_file_path)
+                return text
+            finally:
+                # Clean up the temporary file
+                if os.path.exists(tmp_file_path):
+                    os.unlink(tmp_file_path)
+
         else:
             # Show error message for unsupported file types
-            st.error("This file type is not supported. Please upload only PDF or DOCX files.", icon="🚫")
+            st.error("This file type is not supported. Please upload only PDF, DOCX, or DOC files.", icon="🚫")
             return ""
 
     except Exception as e:
@@ -693,7 +731,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # File uploader for Job Description
-jd_file = st.file_uploader(" ", type=["pdf", "docx"])
+jd_file = st.file_uploader(" ", type=["pdf", "docx","doc"])
 
 # Header for Candidate Resumes Upload
 st.markdown("""
@@ -704,7 +742,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # File uploader for Candidate Resumes
-cv_files = st.file_uploader("", type=["pdf", "docx"], accept_multiple_files=True)
+cv_files = st.file_uploader("", type=["pdf", "docx","doc"], accept_multiple_files=True)
 
 # Ensure criteria_json is initialized in session state
 if 'criteria_json' not in st.session_state:
