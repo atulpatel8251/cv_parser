@@ -629,9 +629,9 @@ def display_pass_fail_verdict(results, cv_text):
         # Pass/Fail verdict
         pass_fail = results.get("Status", "Fail")
         if pass_fail == 'Pass':
-            st.markdown(f"<h2 style='color: green; font-size: 1em;'>🟢 Final Result: PASS ✔️</h2>", unsafe_allow_html=True)
+            st.markdown(f"<h2 style='color: green; font-size: 1em;'>🟢 Profile Eligibility: PASS ✔️</h2>", unsafe_allow_html=True)
         else:
-            st.markdown(f"<h2 style='color: red; font-size: 1em;'>🔴 Final Result: FAIL ❌</h2>", unsafe_allow_html=True)
+            st.markdown(f"<h2 style='color: red; font-size: 1em;'>🔴 Profile Eligibility: FAIL ❌</h2>", unsafe_allow_html=True)
 
         # Check for skill scores
         if skill_scores:
@@ -662,9 +662,9 @@ def display_pass_fail_verdict(results, cv_text):
                 st.table(pd.DataFrame(table_data))  # Displaying table using pandas DataFrame
 
         # Display overall skill score
-        overall_skill_score = round(results.get("Skill Score", 0), 1)
+        Additional_Skill_Score = round(results.get("Skill Score", 0), 1)
         st.markdown(f"""
-    <h3 style='font-size:20px;'>Overall Skill Score: <strong>{overall_skill_score:.1f}</strong> out of 50</h3>
+    <h3 style='font-size:20px;'>Additional_Skill_Score: <strong>{Additional_Skill_Score:.1f}</strong> out of 50</h3>
     """, unsafe_allow_html=True)
 
 
