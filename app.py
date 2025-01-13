@@ -17,9 +17,6 @@ from dateutil.relativedelta import relativedelta
 import tempfile
 from spire.doc import Document
 from langchain.prompts import PromptTemplate
-from docx2pdf import convert
-from win32com.client import Dispatch
-import pythoncom
 logging.basicConfig(filename='app.log', level=logging.ERROR)
 
 # Set Streamlit to use wide mode for the full width of the page
@@ -96,89 +93,76 @@ openai.api_key = st.secrets["secret_section"]["OPENAI_API_KEY"]
 # Function to extract text from PDF uploaded via Streamlit
 
 
-def convert_doc_to_pdf(doc_path):
+def extract_text_from_doc(file_path):
     """
-    Convert a DOC/DOCX file to PDF using appropriate converter
+    Extract text from a .doc file using Spire.Doc
     
     Args:
-        doc_path: Path to the DOC/DOCX file
-        
-    Returns:
-        str: Path to the generated PDF file
-    """
-    file_type = doc_path.split('.')[-1].lower()
-    pdf_path = doc_path.rsplit('.', 1)[0] + '.pdf'
+        file_path: Path to the .doc file
     
-    try:
-        if file_type == 'docx':
-            # Use docx2pdf for DOCX files
-            convert(doc_path, pdf_path)
-        elif file_type == 'doc':
-            # Use Word COM object for DOC files
-            pythoncom.CoInitialize()
-            word = Dispatch('Word.Application')
-            doc = word.Documents.Open(doc_path)
-            doc.SaveAs(pdf_path, FileFormat=17)  # 17 represents PDF format
-            doc.Close()
-            word.Quit()
-        return pdf_path
-    except Exception as e:
-        logging.error(f"Error converting to PDF: {e}")
-        raise
+    Returns:
+        str: Extracted text from the file
+    """
+    # Create a Document object
+    document = Document()
+    
+    # Load the Word document
+    document.LoadFromFile(file_path)
+
+    # Extract the text of the document
+    document_text = document.GetText()
+    document.Close()  # Close the document
+    return document_text
 
 def extract_text_from_uploaded_pdf(uploaded_file):
     """
     Extract text from an uploaded PDF, DOCX, or DOC file.
-    All non-PDF files are first converted to PDF.
-    
+
     Args:
         uploaded_file: A file-like object containing the document
-        
+
     Returns:
         str: Extracted text from the file or an empty string if an error occurs
     """
     try:
         # Determine the file type
         file_type = uploaded_file.name.split('.')[-1].lower()
-        
-        if file_type in ['doc', 'docx']:
-            # Save uploaded file temporarily
-            with tempfile.NamedTemporaryFile(delete=False, suffix=f'.{file_type}') as tmp_file:
-                tmp_file.write(uploaded_file.read())
-                tmp_doc_path = tmp_file.name
-            
-            try:
-                # Convert to PDF
-                pdf_path = convert_doc_to_pdf(tmp_doc_path)
-                
-                # Read the converted PDF
-                with open(pdf_path, 'rb') as pdf_file:
-                    pdf_reader = PyPDF2.PdfReader(pdf_file)
-                    text = "\n".join(page.extract_text() for page in pdf_reader.pages if page.extract_text())
-                
-                return text.strip()
-                
-            finally:
-                # Clean up temporary files
-                if os.path.exists(tmp_doc_path):
-                    os.unlink(tmp_doc_path)
-                if os.path.exists(pdf_path):
-                    os.unlink(pdf_path)
-                    
-        elif file_type == "pdf":
-            # Extract text directly from PDF
+
+        if file_type == "pdf":
+            # Extract text from PDF
             pdf_reader = PyPDF2.PdfReader(io.BytesIO(uploaded_file.read()))
             text = "\n".join(page.extract_text() for page in pdf_reader.pages if page.extract_text())
             return text.strip()
-            
+
+        elif file_type == "docx":
+            # Extract text from DOCX
+            doc = docx.Document(io.BytesIO(uploaded_file.read()))
+            text = "\n".join([para.text for para in doc.paragraphs])
+            return text.strip()
+
+        elif file_type == "doc":
+            # For .doc files, we need to save it temporarily and use Spire.Doc
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.doc') as tmp_file:
+                tmp_file.write(uploaded_file.read())
+                tmp_file_path = tmp_file.name
+
+            try:
+                # Extract text using Spire.Doc
+                text = extract_text_from_doc(tmp_file_path)
+                return text
+            finally:
+                # Clean up the temporary file
+                if os.path.exists(tmp_file_path):
+                    os.unlink(tmp_file_path)
+
         else:
             # Show error message for unsupported file types
             st.error("This file type is not supported. Please upload only PDF, DOCX, or DOC files.", icon="🚫")
             return ""
-            
+
     except Exception as e:
-        st.error(f"Error processing file: {e}", icon="🚫")
-        logging.error(f"Error processing file: {e}")
+        st.error(f"Error reading file: {e}", icon="🚫")
+        logging.error(f"Error reading file: {e}")
         return ""
 # Function to use GenAI to extract criteria from job description
 def use_genai_to_extract_criteria(jd_text):
