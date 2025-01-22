@@ -212,73 +212,73 @@ def calculate_skill_score(skill_scores):
 # Function to extract total years of experience using OpenAI's GPT model
 @st.cache_data
 def extract_experience_from_cv(cv_text):
-    # Define the prompt for extracting years of experience
+    # Get the current year dynamically
+    print("cvtext:",cv_text)
+    current_year = datetime.now().year
+
+    # Define the prompt for GPT-4
     prompt_template = f"""
-    You are an expert in analyzing CVs. Given the following CV text, please extract the total years of experience and any specific start year mentioned. 
-    If the years of experience or start year are not explicitly stated, return "Not found".
+    Analyze the following CV text to determine the total years of professional experience. Focus only on the parts of the CV that mention employment history, including start year and end year or start year and "present"/current year. Use this information to calculate the total years of experience accurately.
+    If explicit dates or durations are missing, return "Not found."
 
-    CV Text: {cv_text}
+    CV Text:
+    {cv_text}
 
-    Return the total years of experience in the following format:
+    Output Format:
     - Total Experience: [Total Years of Experience] years
     - Start Year: [Start Year] (or "Not found" if not specified)
     """
 
     try:
-        # Query OpenAI API for response
+        # Query GPT-4 API
         response = openai.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",  # Use the appropriate model
             messages=[
-                {"role": "system", "content": "You are an expert at extracting work experience from resumes."},
+                {"role": "system", "content": "You are an expert in analyzing CVs and calculating professional experience."},
                 {"role": "user", "content": prompt_template}
             ],
-            max_tokens=200,
+            max_tokens=300,
             temperature=0.7,
         )
-        
-        # Extract the relevant response
+
+        # Extract GPT response
         gpt_response = response.choices[0].message.content.strip()
 
-        # Use regex to find a pattern indicating years of experience, including decimals
-        experience_match = re.search(r'Total Experience:\s*([0-9]+(?:\.[0-9]+)?(\+)?|([0-9]+\s*-\s*[0-9]+))\s*years?', gpt_response, re.IGNORECASE)
-        start_year_match = re.search(r'Start Year:\s*(\d{4})', gpt_response, re.IGNORECASE)
+        # Handle "present" or "current year" in the response
+        gpt_response = gpt_response.replace("present", str(current_year)).replace("current", str(current_year))
 
-        # Extract total experience
-        total_experience = experience_match.group(1) if experience_match else None
+        # Updated regex patterns to be more precise
+        experience_match = re.search(r'Total Experience:\s*(\d+(?:\.\d+)?)\s*years?', gpt_response, re.IGNORECASE)
+        start_year_match = re.search(r'Start Year:\s*(\d{4}|Not found)', gpt_response, re.IGNORECASE)
 
-        # Handle cases for "+" and ranges
-        if total_experience is not None:
-            if '+' in total_experience:
-                total_experience = total_experience.replace('+', '')  # Extract only the number
-                total_experience = float(total_experience)  # Convert to float
-            elif '-' in total_experience:
-                # If a range is given, extract the lower end of the range
-                range_values = total_experience.split('-')
-                total_experience = float(range_values[0].strip())
-            else:
-                total_experience = float(total_experience)  # Convert to float
+        # Extract and convert values using regex matches
+        if experience_match:
+            total_experience = float(experience_match.group(1))
+            # Round to handle potential floating point numbers
+            total_experience = str(round(total_experience, 1))
         else:
-            #st.warning("Couldn't extract the total years of experience. Defaulting to 0.")
-            total_experience = 0
-        
-        # Extract start year or default to "Not found"
+            total_experience = "Not found"
+
         start_year = start_year_match.group(1) if start_year_match else "Not found"
 
-        # Calculate experience from the start year to the present if a valid start year is found
-        if start_year != "Not found":
-            current_year = datetime.now().year
-            total_experience = current_year - int(start_year)
-        
-        # Return experience info as a dictionary
+        # Debugging output to verify values
+        print("Full GPT Response:", gpt_response)
+        print("Extracted Total Experience:", total_experience)
+        print("Extracted Start Year:", start_year)
+
         return {
             "total_years": total_experience,
             "start_year": start_year,
-            "extracted_from": cv_text[:100] + "..."  # First 100 chars of CV for reference
+            "gpt_response": gpt_response
         }
 
     except Exception as e:
-        st.error(f"An error occurred while extracting experience: {e}")
-        return {"total_years": 0, "start_year": "Not found", "error": str(e)}
+        return {
+            "total_years": "Not found",
+            "start_year": "Not found",
+            "error": str(e)
+        }
+
     
 cv_cache = {}
 
@@ -437,15 +437,18 @@ def match_cv_with_criteria(cv_text, criteria_json):
         # Load criteria JSON
         criteria = json.loads(criteria_json)
 
-        # Extract total years of experience from the CV using the provided function
         experience_info = extract_experience_from_cv(cv_text)
+        print("experience:",experience_info)
         total_years = experience_info.get("total_years", 0)  # Default to 0 if not found
-        
-        # Ensure total_years is an integer or float
-        total_years = float(total_years) if isinstance(total_years, (int, float)) else 0
+        print("total : ", total_years)  # Should print the original value (e.g., "15")
 
-        # Extract required years of experience from the criteria
-        required_experience = extract_required_experience(criteria.get("experience", "0"))
+        # Ensure total_years is properly converted to a float
+        try:
+            total_years = float(total_years)  # Convert to float if possible
+        except ValueError:
+            total_years = 0  # Default to 0 if conversion fails
+
+        print("total1 : ", total_years)
 
         # Prepare the GPT prompt for matching
         prompt = (
