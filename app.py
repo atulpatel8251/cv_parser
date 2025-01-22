@@ -449,7 +449,7 @@ def match_cv_with_criteria(cv_text, criteria_json):
             total_years = 0  # Default to 0 if conversion fails
 
         print("total1 : ", total_years)
-
+        required_experience = extract_required_experience(criteria.get("experience", "0"))
         # Prepare the GPT prompt for matching
         prompt = (
             "Given the job description criteria and the candidate's CV text, "
