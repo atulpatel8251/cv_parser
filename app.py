@@ -16,7 +16,7 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 import tempfile
 from spire.doc import Document
-from langchain.prompts import PromptTemplate
+#from langchain.prompts import PromptTemplate
 logging.basicConfig(filename='app.log', level=logging.ERROR)
 
 # Set Streamlit to use wide mode for the full width of the page
@@ -88,7 +88,6 @@ with open('style.css') as f:
 images = ['6MarkQ']
 
 openai.api_key = st.secrets["secret_section"]["OPENAI_API_KEY"]
-
 
 # Function to extract text from PDF uploaded via Streamlit
 
@@ -212,74 +211,98 @@ def calculate_skill_score(skill_scores):
 # Function to extract total years of experience using OpenAI's GPT model
 @st.cache_data
 def extract_experience_from_cv(cv_text):
-    # Define the prompt for extracting years of experience
+    # Get the current year dynamically
+    x = datetime.now()
+    current_year = x.strftime("%m-%Y")
+    
+    print("CV_Text : ",cv_text)
+    # Enhanced prompt template specifically for handling overlapping dates
     prompt_template = f"""
-    You are an expert in analyzing CVs. Given the following CV text, please extract the total years of experience and any specific start year mentioned. 
-    If the years of experience or start year are not explicitly stated, return "Not found".
+    Please analyze this  {cv_text} carefully to calculate the total years of professional experience. Follow these steps:
+    
+    1. First, list out all date ranges found in chronological order:
+       - Replace 'Current' or 'till date' with {current_year}
+       - Include all years mentioned with positions Formats from following 
+       - Format as YYYY-YYYY for each position
+       - Format as DD-MM-YYYY - DD-MM-YYYY(For example:10-Jul-12 to 31-Jan-21)
+       - Format as YYYY-MM-DD - YYYY-MM-DD(For example:12-Jul-10 to 21-Jan-31)
+       - Format as YYYY-DD-MM - YYYY-DD-MM(For example:12-10-Jul to 21-31-Jan)
+       - Format as MM-YYYY-MM-YYYY
+       - Format as YYYY-MM-YYYY-MM
+       - Format as YYYY-YY.
 
-    CV Text: {cv_text}
+    2. Then, merge overlapping periods :
+       - Identify any overlapping years
+       - Only count overlapping periods once
+       - Create a timeline of non-overlapping periods
 
-    Return the total years of experience in the following format:
-    - Total Experience: [Total Years of Experience] years
-    - Start Year: [Start Year] (or "Not found" if not specified)
+    3. Calculate total experience:
+       - Sum up all non-overlapping periods.
+       - Round to one decimal place Return in Sngle Value.
+       -     
     """
 
     try:
-        # Query OpenAI API for response
+        # Query GPT-4 API with enhanced system message
         response = openai.chat.completions.create(
-            model="gpt-4o-mini",
+            model="gpt-4o",
             messages=[
-                {"role": "system", "content": "You are an expert at extracting work experience from resumes."},
+                {
+                    "role": "system", 
+                    "content": """You are an expert in analyzing cv_text and calculating professional experience 
+                     Pay special attention to overlapping date ranges(If two or more projects within the same company 
+                     overlap, merge them into a single continuous range.) and ensure no double-counting of experience.
+                     Always show your work step by step."""
+                },
                 {"role": "user", "content": prompt_template}
             ],
-            max_tokens=200,
-            temperature=0.7,
+            max_tokens=1000,
+            temperature=0
         )
         
-        # Extract the relevant response
+        # Extract GPT response
         gpt_response = response.choices[0].message.content.strip()
-
-        # Use regex to find a pattern indicating years of experience, including decimals
-        experience_match = re.search(r'Total Experience:\s*([0-9]+(?:\.[0-9]+)?(\+)?|([0-9]+\s*-\s*[0-9]+))\s*years?', gpt_response, re.IGNORECASE)
+        print("gpt_response:",gpt_response)
+        # Handle "present" or "current year" in the response
+        gpt_response = gpt_response.replace("present", str(current_year)).replace("current", str(current_year))
+        print("gpt_response:",gpt_response)
+        # Extract experience and start year using improved regex
+        experience_match = re.findall(r'(\d+(?:\.\d+)?)\s*years?', gpt_response, re.IGNORECASE)
+        print("experience_match:",experience_match)
         start_year_match = re.search(r'Start Year:\s*(\d{4})', gpt_response, re.IGNORECASE)
-
-        # Extract total experience
-        total_experience = experience_match.group(1) if experience_match else None
-
-        # Handle cases for "+" and ranges
-        if total_experience is not None:
-            if '+' in total_experience:
-                total_experience = total_experience.replace('+', '')  # Extract only the number
-                total_experience = float(total_experience)  # Convert to float
-            elif '-' in total_experience:
-                # If a range is given, extract the lower end of the range
-                range_values = total_experience.split('-')
-                total_experience = float(range_values[0].strip())
-            else:
-                total_experience = float(total_experience)  # Convert to float
+        
+        # Extract and convert values
+        if experience_match:
+    # Choose the most relevant value by looking at the context or largest value
+            total_experience = max(map(float, experience_match))
+            print("total_experience:", total_experience)
+            total_experience = str(round(total_experience, 1))  # Round to one decimal place
+            print("total_experience2:", total_experience)
         else:
-            #st.warning("Couldn't extract the total years of experience. Defaulting to 0.")
-            total_experience = 0
-        
-        # Extract start year or default to "Not found"
-        start_year = start_year_match.group(1) if start_year_match else "Not found"
+            total_experience = "Not found"
 
-        # Calculate experience from the start year to the present if a valid start year is found
-        if start_year != "Not found":
-            current_year = datetime.now().year
-            total_experience = current_year - int(start_year)
+            
+        start_year = start_year_match.group(1) if start_year_match else "Not found"
         
-        # Return experience info as a dictionary
+        # Debugging output
+        print("\nFull GPT Response:", gpt_response)
+        print("\nExtracted Total Experience:", total_experience)
+        print("Extracted Start Year:", start_year)
+        
         return {
             "total_years": total_experience,
             "start_year": start_year,
-            "extracted_from": cv_text[:100] + "..."  # First 100 chars of CV for reference
+            "gpt_response": gpt_response
+        }
+        
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        return {
+            "total_years": "Not found",
+            "start_year": "Not found",
+            "error": str(e)
         }
 
-    except Exception as e:
-        st.error(f"An error occurred while extracting experience: {e}")
-        return {"total_years": 0, "start_year": "Not found", "error": str(e)}
-    
 cv_cache = {}
 
 def normalize_cv_text(cv_text):
@@ -309,111 +332,49 @@ def calculate_skill_score(skill_scores):
     total_score = sum(skill_scores.values())
     
     return total_score
-
 def extract_candidate_name_from_cv(cv_text):
     """
-    Extracts candidate name from the CV text content using GPT with enhanced accuracy.
-    
+    Extracts the candidate's name from the {cv_text} content.
+
     Args:
-        cv_text (str): The CV text content
-    
+        cv_text (str): The {cv_text} content.
+
     Returns:
-        str: Extracted candidate name
+        str: Extracted candidate name or 'Unknown Candidate' if not found.
     """
     try:
-        # More specific prompt for better name extraction
+        # Extract top few lines of the CV for name extraction
+        # cv_header = "\n".join(cv_text.splitlines()[:50])  # Top 5 lines for context
+        # print("cvheader:",cv_header)
+        # Prompt for GPT
         prompt = (
-            "Extract ONLY the candidate's full name from this CV text. "
-            "Guidelines:\n"
-            "1. Look for the name at the top of the CV\n"
-            "2. Look for common CV header patterns like 'Name:', 'Resume of:', 'Curriculum Vitae of:'\n"
-            "3. Ignore any other names that might appear in experience or reference sections\n"
-            "4. Only return the full name, no titles (Mr., Ms., Dr., etc)\n"
-            "5. No additional text or punctuation\n"
-            "6. If multiple possible names are found, return the one that appears to be the CV owner\n\n"
-            "CV text:\n"
-            f"{cv_text[:1000]}"  # Increased to 1000 characters for better context
+            "Extract the candidate's full name from this cv_text. The name is likely at the top "
+            "'Name:', 'Resume of:', 'Name of Staff','name of candidate','first name last name', or similar. Ignore job titles, contact details, and other information.\n\n"
+            f"Name:\n{cv_text}"
         )
 
-        # Get first response from GPT
+        # GPT call
         response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model="gpt-4o",
             messages=[
-                {"role": "system", "content": "You are a name extraction specialist. Extract only the candidate's name exactly as it appears in their CV header."},
+                {"role": "system", "content": "You are a name extraction specialist. Extract candidate name only from a {cv_text}."},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=50,
+            max_tokens=30,
             temperature=0
         )
 
-        # Extract name from first response
+        # Extracted name
         candidate_name = response.choices[0].message.content.strip()
-
-        # If we got a name, validate it with a second prompt
-        if candidate_name and len(candidate_name.split()) <= 4:  # Allow up to 4 name parts
-            validation_prompt = (
-                f"Verify if this extracted name '{candidate_name}' is correct by checking the CV text again.\n"
-                "If it's correct, return ONLY the name.\n"
-                "If it's incorrect, extract the correct name from this CV text:\n\n"
-                f"{cv_text[:1000]}"
-            )
-
-            # Get validation response
-            validation_response = openai.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[
-                    {"role": "system", "content": "You are a name verification specialist. Verify the extracted name against the CV text."},
-                    {"role": "user", "content": validation_prompt}
-                ],
-                max_tokens=50,
-                temperature=0
-            )
-
-            validated_name = validation_response.choices[0].message.content.strip()
-
-            # Compare original and validated names
-            if validated_name and len(validated_name.split()) <= 4:
-                # If names match or validated name looks more legitimate
-                if validated_name == candidate_name or (
-                    len(validated_name.split()) >= 2 and  # Ensure it's at least a first and last name
-                    not any(word.lower() in ['resume', 'cv', 'name', 'unknown'] for word in validated_name.split())
-                ):
-                    return validated_name
-
-        # If validation failed or original extraction was problematic
-        # Try one more time with a different approach
-        final_prompt = (
-            "Find the candidate's name from this CV text. The name should be:\n"
-            "1. Located near the top of the CV\n"
-            "2. Not be part of an email address or contact details\n"
-            "3. Not be a company name or reference name\n"
-            "Return ONLY the name, nothing else.\n\n"
-            f"{cv_text[:1000]}"
-        )
-
-        final_response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a CV analyzer. Find the candidate's name from the CV header."},
-                {"role": "user", "content": final_prompt}
-            ],
-            max_tokens=50,
-            temperature=0
-        )
-
-        final_name = final_response.choices[0].message.content.strip()
-
-        # Final validation checks
-        if final_name and len(final_name.split()) <= 4:
-            if not any(word.lower() in ['resume', 'cv', 'name', 'unknown'] for word in final_name.split()):
-                return final_name
-
+        print('candidate_name:',candidate_name)
+        # Validate and return
+        if candidate_name and len(candidate_name.split()) <= 4:
+            return candidate_name
         return "Unknown Candidate"
 
     except Exception as e:
         logging.error(f"Error extracting candidate name: {e}")
         return "Unknown Candidate"
-
 cv_cache = {}
 
 def match_cv_with_criteria(cv_text, criteria_json):
@@ -439,25 +400,31 @@ def match_cv_with_criteria(cv_text, criteria_json):
 
         # Extract total years of experience from the CV using the provided function
         experience_info = extract_experience_from_cv(cv_text)
+        print("experience:",experience_info)
         total_years = experience_info.get("total_years", 0)  # Default to 0 if not found
-        
-        # Ensure total_years is an integer or float
-        total_years = float(total_years) if isinstance(total_years, (int, float)) else 0
+        print("total : ", total_years)  # Should print the original value (e.g., "15")
 
+        # Ensure total_years is properly converted to a float
+        try:
+            total_years = float(total_years)  # Convert to float if possible
+        except ValueError:
+            total_years = 0  # Default to 0 if conversion fails
+
+        print("total1 : ", total_years)
         # Extract required years of experience from the criteria
         required_experience = extract_required_experience(criteria.get("experience", "0"))
 
         # Prepare the GPT prompt for matching
         prompt = (
-            "Given the job description criteria and the candidate's CV text, "
+            "Given the job description criteria {criteria_json} and the candidate's {cv_text}, "
             "please match the following: "
             "1. Which education qualifications from the job description are present in the CV? "
             "2. Which experiences from the job description are present in the CV? "
             "3. Which mandatory skills from the job description are present in the CV? "
-            "Certifications are only mandatory if they are listed as part of the Essential Criteria in the job description. "
-            "4. Which desired skills from the job description are present in the CV? "
-            "5. Identify missing qualifications, experiences, skills, or certifications from the CV. "
-            "Also, assign a score (0 to 10) for each desired skill based on the extent of match. "
+            "4. 'Certifications' or 'Professional Certification' (mandatory if they are listed as part of the Essential Criteria in the job description). "
+            "5. Which desired skills from the job description are present in the CV? "
+            "6. Identify missing qualifications, experiences, skills, or certifications from the {cv_text}. "
+            "Also, assign a score (0 to 10) for each desired skill based on the extent of match."
             "The job description criteria are as follows:\n\n"
             f"{criteria_json}\n\n"
             "The CV text is as follows:\n\n"
@@ -559,62 +526,51 @@ def extract_required_experience(experience_str):
         st.warning(f"Couldn't extract a numeric value from required experience: {experience_str}. Error: {e}")
         return 0.0  # Default to 0 if extraction fails
     
-if "justifications" not in st.session_state:
-    st.session_state.justifications = {}
-
-# Function to justify skill scoring based on the candidate's resume
-# Cache for skill justifications
-cv_skill_scores_cache = {}
-
-def get_skill_score_justification(candidate_name, skill, score, cv_text):
-    # Generate a unique hash for the CV to ensure the same CV gets the same skill score
-    cv_hash = generate_cv_hash(cv_text)
+def get_skill_score_justification(criteria_json, skill, score, cv_text):
+    """
+    Generate a justification for the skill score based on the candidate's resume text
+    and evaluation criteria.
     
-    # Check if the skill score for this skill and CV is already cached
-    if cv_hash in cv_skill_scores_cache and skill in cv_skill_scores_cache[cv_hash]:
-        #st.success(f"Returning cached skill justification for '{skill}' skill.")
-        return cv_skill_scores_cache[cv_hash][skill]
-
+    :param criteria_json: JSON object with evaluation criteria
+    :param skill: Skill being evaluated
+    :param score: Score assigned to the skill
+    :param cv_text: Candidate's resume text
+    :return: Justification for the skill score
+    """
     # Prepare the prompt
     if score == 0:
         prompt = (
-            f"Briefly explain in 2-3 bullet points why the candidate's resume text '{cv_text}' does not demonstrate the "
-            f"necessary skills for '{skill}', resulting in a score of {score}/10. This score remains the same if the same "
-            "resume is uploaded again, as it accurately reflects the candidate's current skill level. Focus on clear, simple "
-            "reasons why the candidate lacks this skill."
+            f"Based on the evaluation criteria provided in {criteria_json}, explain in 2 bullet points only,explain every bullent points just 20 words only why the candidate's "
+            f"resume text '{cv_text}' does not demonstrate the necessary skills for '{skill}', resulting in a score of {score}/10. "
+            "Focus on specific, unique shortcomings in the candidate's resume text that justify this score. "
+            "Avoid generic or repetitive explanations across different resumes."
+            "*Strictly Every Bullent Points are started from next line.*"
         )
     else:
         prompt = (
-            f"Provide a concise justification in 2-3 bullet points explaining why the candidate's resume text '{cv_text}' "
-            f"demonstrates a match for the skill '{skill}' with a score of {score}/10. This score will remain consistent if the same "
-            "resume is uploaded again, as it accurately reflects the candidate's skills. Keep each bullet simple, focusing on "
-            "clear reasoning in 7-8 words per line. Avoid overly technical terms."
+            f"Based on the evaluation criteria provided in {criteria_json}, provide a concise justification in 2 bullet points only,explain every bullent points just 20 words only "
+            f"explaining why the candidate's resume text '{cv_text}' demonstrates a match for the skill '{skill}' with a score of {score}/10. "
+            "Focus on specific, unique strengths in the candidate's resume text that align with the criteria and justify the score. "
+            "Avoid reusing the same points for different resumes and ensure each explanation is unique."
+            "*Strictly Every Bullent Points are started from next line.*"
         )
 
     # Using the 'openai.chat.completions.create' method
     response = openai.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4o",
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt}
         ],
         max_tokens=100,
-        temperature=0
+        temperature=0.1
     )
 
     # Access the explanation from the response
     explanation = response.choices[0].message.content.strip()
 
-    # Cache the skill score and explanation for this CV and skill
-    if cv_hash not in cv_skill_scores_cache:
-        cv_skill_scores_cache[cv_hash] = {}
-    
-    # Store the explanation and score in the cache
-    cv_skill_scores_cache[cv_hash][skill] = explanation
-
     # Return the explanation
     return explanation
-
 
 def display_pass_fail_verdict(results, cv_text):
     candidate_name = results['Candidate Name']
@@ -624,8 +580,6 @@ def display_pass_fail_verdict(results, cv_text):
     logging.debug(f"Skill scores for {candidate_name}: {skill_scores}")
 
     with st.container():
-        #st.markdown("<div style='padding: 10px; background-color: #f0f8ff; border-radius: 10px;'>", unsafe_allow_html=True)
-
         # Pass/Fail verdict
         pass_fail = results.get("Status", "Fail")
         if pass_fail == 'Pass':
@@ -643,18 +597,15 @@ def display_pass_fail_verdict(results, cv_text):
                 table_data = []
 
                 for skill, score in skill_scores.items():
-                    # Create a unique session key for each skill justification
-                    justification_key = f"justification_{candidate_name}_{skill}"
-                    if justification_key not in st.session_state:
-                        explanation = get_skill_score_justification(candidate_name, skill, score, cv_text)
-                        st.session_state[justification_key] = explanation
+                    # Generate justification dynamically for each skill
+                    explanation = get_skill_score_justification(criteria_json, skill, score, cv_text)
 
                     # Append the row to the table data
                     table_data.append({
                         "Candidate Name": candidate_name,
                         "Skill": skill,
                         "Score": f"{score}/10",
-                        "Justification": st.session_state[justification_key]
+                        "Justification": explanation
                     })
 
                 # Display the table with skill assessment
@@ -666,7 +617,6 @@ def display_pass_fail_verdict(results, cv_text):
         st.markdown(f"""
     <h3 style='font-size:20px;'>Additional_Skill_Score: <strong>{Additional_Skill_Score:.1f}</strong> out of 50</h3>
     """, unsafe_allow_html=True)
-
 
         # Pass/Fail message based on the final status
         if pass_fail == "Pass":
@@ -685,7 +635,7 @@ def display_candidates_table(candidates):
 
     # Create DataFrame from candidates
     df = pd.DataFrame(candidates)
-
+    # df.to_string(index=False)
     # Ensure 'pass_or_fail' and 'skill_score' columns exist
     if 'Status' not in df.columns or 'Skill Score' not in df.columns or 'Total Years of Experience' not in df.columns or 'Candidate Name' not in df.columns:
         st.error("Missing required columns in candidates data.")
@@ -752,8 +702,10 @@ if 'criteria_json' not in st.session_state:
 if st.button("Extract Criteria and Match Candidates"):
     if jd_file:
         jd_text = extract_text_from_uploaded_pdf(jd_file)
+        #print("jdtext:",jd_text)
         if jd_text:
             criteria_json = use_genai_to_extract_criteria(jd_text)
+            #print("criteria jd text",criteria_json)
             if criteria_json:
                 # Save criteria in session state
                 st.session_state.criteria_json = criteria_json
@@ -843,5 +795,3 @@ footer = """
         <p style="text-align: right;">The responses provided on this website are AI-generated. User discretion is advised.</p>
     </div>
 """
-
-st.markdown(footer, unsafe_allow_html=True)
