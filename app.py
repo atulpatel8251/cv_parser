@@ -610,7 +610,9 @@ def display_pass_fail_verdict(results, cv_text):
 
                 # Display the table with skill assessment
                 st.markdown("<h3>Skill Assessment Table</h3>", unsafe_allow_html=True)
-                st.table(pd.DataFrame(table_data))  # Displaying table using pandas DataFrame
+                df = pd.DataFrame(table_data)
+                blankIndex=[''] * len(df)
+                df.index=blankIndex  # Displaying table using pandas DataFrame
 
         # Display overall skill score
         Additional_Skill_Score = round(results.get("Skill Score", 0), 1)
