@@ -720,7 +720,7 @@ def display_candidates_table(candidates):
         'Skill Score': '{:.0f}'  # Format skill score as whole number
     })
     
-    st.dataframe(styled_df)  # Display the DataFrame
+    st.dataframe(styled_df,hide_index=True)  # Display the DataFrame
 
 # Add a styled box for the file uploaders
 st.markdown("""
