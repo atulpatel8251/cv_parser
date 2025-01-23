@@ -230,7 +230,7 @@ def extract_experience_from_cv(cv_text):
        - Format as MM-YYYY-MM-YYYY
        - Format as YYYY-MM-YYYY-MM
        - Format as YYYY-YY.
-
+       - if in the cv_text 'start year' and 'present year' or 'end year' are not mentioned,then extract experience from 'cvtext' , if also not mentioned experience in cvtext then return 0.
     2. Then, merge overlapping periods :
        - Identify any overlapping years
        - Only count overlapping periods once
