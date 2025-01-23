@@ -10,6 +10,7 @@ import streamlit as st
 from PIL import Image
 import base64
 import docx
+import docx2txt
 import logging
 import os
 from dateutil import parser
@@ -135,9 +136,9 @@ def extract_text_from_uploaded_pdf(uploaded_file):
 
         elif file_type == "docx":
             # Extract text from DOCX
-            doc = docx.Document(io.BytesIO(uploaded_file.read()))
-            text = "\n".join([para.text for para in doc.paragraphs])
-            return text.strip()
+            doc = docx2txt.process(uploaded_file)
+            print(doc)
+            return doc.strip()
 
         elif file_type == "doc":
             # For .doc files, we need to save it temporarily and use Spire.Doc
