@@ -674,7 +674,6 @@ def display_candidates_table(candidates):
         'Total Years of Experience': '{:.1f}',
         'Skill Score': '{:.0f}'  # Format skill score as whole number
     })
-    
     st.dataframe(styled_df,hide_index=True)  # Display the DataFrame
 
 # Add a styled box for the file uploaders
