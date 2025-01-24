@@ -667,14 +667,14 @@ def display_candidates_table(candidates):
         return f'background-color: {color}'
 
     # Use Styler for table display with custom number formatting
-    styled_df = df.style.applymap(color_pass_fail, subset=['Status'])
+    sty1 = df.style.applymap(color_pass_fail, subset=['Status'])
     
     # Format the Total Years of Experience column to show exactly one decimal place
-    styled_df = styled_df.format({
+    sty1 = sty1.format({
         'Total Years of Experience': '{:.1f}',
         'Skill Score': '{:.0f}'  # Format skill score as whole number
     })
-    st.dataframe(styled_df,hide_index=True)  # Display the DataFrame
+    st.dataframe(sty1,hide_index=True)  # Display the DataFrame
 
 # Add a styled box for the file uploaders
 st.markdown("""
