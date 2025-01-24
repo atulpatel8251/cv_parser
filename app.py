@@ -33,7 +33,7 @@ logo_image = Image.open('assests/HD_Human_Resources_Banner.jpg')
 resized_logo = logo_image.resize((1500, 300), Image.LANCZOS)  # Maintain quality during resizing
 
 # Display the logo
-st.image(resized_logo, use_container_width=True)
+st.image(resized_logo, use_column_width=True)
 
 # Function to add background image from a local file
 def add_bg_from_local(image_file,opacity=0.7):
