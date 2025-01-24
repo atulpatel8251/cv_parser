@@ -17,6 +17,8 @@ from dateutil import parser
 from dateutil.relativedelta import relativedelta
 import tempfile
 from spire.doc import Document
+# from dotenv import load_dotenv
+# load_dotenv()
 #from langchain.prompts import PromptTemplate
 logging.basicConfig(filename='app.log', level=logging.ERROR)
 
@@ -31,7 +33,7 @@ logo_image = Image.open('assests/HD_Human_Resources_Banner.jpg')
 resized_logo = logo_image.resize((1500, 300), Image.LANCZOS)  # Maintain quality during resizing
 
 # Display the logo
-st.image(resized_logo, use_column_width=True)
+st.image(resized_logo, use_container_width=True)
 
 # Function to add background image from a local file
 def add_bg_from_local(image_file,opacity=0.7):
@@ -87,6 +89,7 @@ with open('style.css') as f:
  st.markdown(f'<style>{f.read()}</style>', unsafe_allow_html=True) 
 # Example: Add your image handling or other logic here
 images = ['6MarkQ']
+
 
 openai.api_key = st.secrets["secret_section"]["OPENAI_API_KEY"]
 
@@ -608,13 +611,12 @@ def display_pass_fail_verdict(results, cv_text):
                         "Score": f"{score}/10",
                         "Justification": explanation
                     })
-
-                # Display the table with skill assessment
-                st.markdown("<h3>Skill Assessment Table</h3>", unsafe_allow_html=True)
                 df = pd.DataFrame(table_data)
                 blankIndex=[''] * len(df)
-                df.index=blankIndex  # Displaying table using pandas DataFra
+                df.index=blankIndex
+                #st.markdown(df.to_html(index=False), unsafe_allow_html=True)
                 st.table(df)
+
         # Display overall skill score
         Additional_Skill_Score = round(results.get("Skill Score", 0), 1)
         st.markdown(f"""
