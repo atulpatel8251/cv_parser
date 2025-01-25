@@ -697,7 +697,7 @@ st.markdown("""
 
 # File uploader for Candidate Resumes
 cv_files = st.file_uploader("", type=["pdf", "docx","doc"], accept_multiple_files=True)
-
+st.write(f"Total CV'S Uploaded: {len(cv_files)} ")
 # Ensure criteria_json is initialized in session state
 if 'criteria_json' not in st.session_state:
     st.session_state['criteria_json'] = None
